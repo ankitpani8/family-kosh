@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// CI supplies these; local builds fall back to version 1 and the debug key.
+def koshVersionCode = Integer.parseInt(System.getenv("KOSH_VERSION_CODE") ?: "1")
+def koshVersionName = System.getenv("KOSH_VERSION_NAME") ?: "1.0"
+def koshKeystore = System.getenv("KOSH_KEYSTORE_PATH")
+def koshHasKey = koshKeystore != null && new File(koshKeystore).exists()
+
 android {
     namespace "in.familykosh.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -8,8 +14,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes the run number so every build installs as an update.
-        versionCode (System.getenv("KOSH_VERSION_CODE") ?: "1").toInteger()
-        versionName System.getenv("KOSH_VERSION_NAME") ?: "1.0"
+        versionCode koshVersionCode
+        versionName koshVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,9 +27,8 @@ android {
         // A stable release key comes from CI secrets. Without it, release builds fall back to the debug key
         // so the APK still installs (updates then need an uninstall when the key changes).
         release {
-            def ks = System.getenv("KOSH_KEYSTORE_PATH")
-            if (ks && file(ks).exists()) {
-                storeFile file(ks)
+            if (koshHasKey) {
+                storeFile file(koshKeystore)
                 storePassword System.getenv("KOSH_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("KOSH_KEY_ALIAS")
                 keyPassword System.getenv("KOSH_KEY_PASSWORD")
@@ -32,7 +37,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig (System.getenv("KOSH_KEYSTORE_PATH") && file(System.getenv("KOSH_KEYSTORE_PATH")).exists()) ? signingConfigs.release : signingConfigs.debug
+            signingConfig koshHasKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
