@@ -89,13 +89,15 @@ export function simulate(ledger: Ledger, scope: Scope, o: SimOptions): SimResult
   const agg = aggregate(ledger, scope);
   const start = LT.map((b) => Math.max(0, agg.bucket[b] ?? 0));
 
-  // Committed contributions keep flowing into their own asset types.
-  const fixed = LT.map(() => 0);
+  // Committed contributions keep flowing into their own asset types. A contribution into a
+  // goal-linked holding stops once that goal falls due (the house FD stops when the house is paid).
+  const fixed: { i: number; amount: number; until: number }[] = [];
   for (const h of ledger.holdings) {
     if (!h.sip) continue;
     const f = h.paidBy ? (scope.has(h.paidBy) && factor(h, scope) > 0 ? 1 : 0) : factor(h, scope);
     const i = LT.indexOf(bucketOf(h) as LongTermBucket);
-    if (f && i >= 0) fixed[i] += h.sip * f;
+    const ends = ledger.goals.filter((g) => g.linked.includes(h.id)).map((g) => monthsUntil(g.date, ledger.today));
+    if (f && i >= 0) fixed.push({ i, amount: h.sip * f, until: ends.length ? Math.max(0, Math.min(...ends)) : Infinity });
   }
   const goals = ledger.goals
     .filter((g) => scope.has(g.personId))
@@ -141,8 +143,9 @@ export function simulate(ledger: Ledger, scope: Scope, o: SimOptions): SimResult
         const g = Math.pow(1 + o.stepUp / 100, Math.floor((m - 1) / 12));
         for (let i = 0; i < 5; i++) {
           v[i] *= Math.exp(mu[i] + sg[i] * z[i]);
-          v[i] += o.monthly * g * wv[i] + fixed[i];
+          v[i] += o.monthly * g * wv[i];
         }
+        for (const c of fixed) if (m <= c.until) v[c.i] += c.amount;
         if (o.payGoals)
           for (const gl of goals) {
             if (gl.month !== m) continue;

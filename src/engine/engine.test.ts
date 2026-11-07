@@ -152,4 +152,12 @@ describe("simulator", () => {
     expect(end).toBeGreaterThan(120000);
     expect(end).toBeLessThan(125000);
   });
+  it("stops contributions into a goal-linked holding when the goal falls due", () => {
+    const L = fixture();
+    L.holdings = L.holdings.filter((h) => h.id === "house-fd");
+    L.settings.assumptions.debt = { ret: 0, vol: 0 };
+    const opts = { years: 2, monthly: 0, stepUp: 0, payGoals: false, real: false, target: 0, paths: ["safe" as const], custom: {}, runs: 3 };
+    const r = simulate(L, S("a", "m"), opts);
+    expect(Math.round(r.paths.safe!.p50[r.points - 1])).toBe(700000); // 7 months × 1L, then it stops
+  });
 });
