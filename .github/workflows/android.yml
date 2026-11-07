@@ -1,0 +1,56 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "supabase/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      KOSH_VERSION_CODE: ${{ github.run_number }}
+      KOSH_VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21, cache: gradle }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx cap sync android
+
+      # Optional stable signing key (see README). Without it the APK is signed with a throwaway debug key.
+      - name: Restore signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KOSH_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kosh.jks"
+            echo "KOSH_KEYSTORE_PATH=$RUNNER_TEMP/kosh.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Build APK
+        env:
+          KOSH_KEYSTORE_PASSWORD: ${{ secrets.KOSH_KEYSTORE_PASSWORD }}
+          KOSH_KEY_ALIAS: ${{ secrets.KOSH_KEY_ALIAS }}
+          KOSH_KEY_PASSWORD: ${{ secrets.KOSH_KEY_PASSWORD }}
+        run: cd android && chmod +x gradlew && ./gradlew --no-daemon assembleRelease
+      - run: cp android/app/build/outputs/apk/release/app-release.apk family-kosh.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: family-kosh-apk, path: family-kosh.apk }
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Family Kosh 1.0.${{ github.run_number }}
+          make_latest: true
+          files: family-kosh.apk
+          body: |
+            Android build from ${{ github.sha }}.
+            Install: download family-kosh.apk on your phone, open it, and allow installs from your browser or file manager when Android asks.
