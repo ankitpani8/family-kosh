@@ -20,7 +20,8 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21, cache: gradle }
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest ships with the Android SDK (ANDROID_HOME); Gradle fetches any missing platform.
+      - run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
       - run: npm ci
       - run: npm test
       - run: npm run build
