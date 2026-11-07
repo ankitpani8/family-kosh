@@ -8,6 +8,12 @@ async function rows<T>(q: PromiseLike<{ data: T[] | null; error: { message: stri
   if (error) throw new Error(error.message);
   return data ?? [];
 }
+/**
+ * Inserts set their own id instead of reading the new row back. Reading back (INSERT … RETURNING) runs the
+ * table's read policy against a row the policy's lookup functions can't see yet, which Postgres rejects.
+ */
+export const newId = (): string => crypto.randomUUID();
+
 async function ok(q: PromiseLike<{ error: { message: string } | null }>) {
   const { error } = await q;
   if (error) throw new Error(error.message);
@@ -50,17 +56,17 @@ export async function savePerson(userId: string, p: PersonInput, id?: string): P
     await ok(sb().from("people").update(body).eq("id", id));
     return id;
   }
-  const { data, error } = await sb().from("people").insert({ ...body, manager_id: userId }).select("id").single();
-  if (error) throw new Error(error.message);
-  return data.id;
+  const nid = newId();
+  await ok(sb().from("people").insert({ id: nid, ...body, manager_id: userId }));
+  return nid;
 }
 export const deletePerson = (id: string) => ok(sb().from("people").delete().eq("id", id));
 
 // ── families ──
 export async function createFamily(name: string): Promise<string> {
-  const { data, error } = await sb().from("families").insert({ name }).select("id").single();
-  if (error) throw new Error(error.message);
-  return data.id;
+  const id = newId();
+  await ok(sb().from("families").insert({ id, name }));
+  return id;
 }
 export const renameFamily = (id: string, name: string) => ok(sb().from("families").update({ name }).eq("id", id));
 export const deleteFamily = (id: string) => ok(sb().from("families").delete().eq("id", id));
@@ -104,9 +110,8 @@ export async function saveHolding(h: HoldingInput, owners: Owner[], today: strin
   let id = prev?.id;
   if (id) await ok(c.from("holdings").update(holdingBody(h)).eq("id", id));
   else {
-    const { data, error } = await c.from("holdings").insert(holdingBody(h)).select("id").single();
-    if (error) throw new Error(error.message);
-    id = data.id as string;
+    id = newId();
+    await ok(c.from("holdings").insert({ id, ...holdingBody(h) }));
   }
   // Replace owners: add/update the new set, then remove anyone no longer listed.
   // Order matters: adding first keeps edit rights through the change.
@@ -126,10 +131,10 @@ export const deleteHolding = (id: string) => ok(sb().from("holdings").delete().e
 
 // ── unit prices ──
 export async function createSeries(label: string, unit: string, price: number | null, note: string, date: string): Promise<string> {
-  const { data, error } = await sb().from("price_series").insert({ label, unit, price, note }).select("id").single();
-  if (error) throw new Error(error.message);
-  if (price != null) await recordPrice(data.id, date, price);
-  return data.id;
+  const id = newId();
+  await ok(sb().from("price_series").insert({ id, label, unit, price, note }));
+  if (price != null) await recordPrice(id, date, price);
+  return id;
 }
 export const updateSeries = (id: string, label: string, unit: string, note: string) =>
   ok(sb().from("price_series").update({ label, unit, note }).eq("id", id));
@@ -145,9 +150,8 @@ export async function saveGoal(g: { personId: string; name: string; target: numb
   const body = { person_id: g.personId, name: g.name, target: g.target, target_month: g.date + "-01", notes: g.notes };
   if (id) await ok(c.from("goals").update(body).eq("id", id));
   else {
-    const { data, error } = await c.from("goals").insert(body).select("id").single();
-    if (error) throw new Error(error.message);
-    id = data.id as string;
+    id = newId();
+    await ok(c.from("goals").insert({ id, ...body }));
   }
   await ok(c.from("goal_links").delete().eq("goal_id", id));
   if (g.linked.length) await ok(c.from("goal_links").insert(g.linked.map((hid) => ({ goal_id: id, holding_id: hid }))));

@@ -1,7 +1,7 @@
 // Import a Family Kosh export (the JSON the earlier claude.ai artifact stored) into this account.
 // The person marked as "me" becomes the signed-in account's self; everyone else becomes a person you manage.
 import { sb } from "../lib/supabase";
-import { addMember, createFamily, recordPrice, recordSnapshot, saveGoal, savePerson } from "./api";
+import { addMember, createFamily, newId, recordPrice, recordSnapshot, saveGoal, savePerson } from "./api";
 
 type Doc = Record<string, any>;
 export interface KoshExport {
@@ -44,10 +44,11 @@ export async function importKosh(
   progress("Adding unit prices…");
   const seriesId: Record<string, string> = {};
   for (const [key, p] of Object.entries(x.prices)) {
-    const { data, error } = await c.from("price_series").insert({ label: p.label, unit: p.unit, price: p.price ?? null, note: p.note ?? "" }).select("id").single();
+    const sid = newId();
+    const { error } = await c.from("price_series").insert({ id: sid, label: p.label, unit: p.unit, price: p.price ?? null, note: p.note ?? "" });
     if (error) throw new Error(error.message);
-    seriesId[key] = data.id;
-    for (const pt of p.history ?? []) if (pt.p != null) await recordPrice(data.id, pt.d, Number(pt.p));
+    seriesId[key] = sid;
+    for (const pt of p.history ?? []) if (pt.p != null) await recordPrice(sid, pt.d, Number(pt.p));
   }
 
   const holdingId: Record<string, string> = {};
@@ -57,24 +58,25 @@ export async function importKosh(
     progress(`Adding holdings (${++i} of ${entries.length})…`);
     const owners = (h.owners ?? []).map((o: string) => personId[o]).filter(Boolean);
     if (!owners.length) continue;
-    const { data, error } = await c.from("holdings").insert({
-      name: h.name, cls: h.cls ?? "other", place: h.place ?? "", mode: h.mode === "units" ? "units" : "value",
+    const hid = newId();
+    const { error } = await c.from("holdings").insert({
+      id: hid, name: h.name, cls: h.cls ?? "other", place: h.place ?? "", mode: h.mode === "units" ? "units" : "value",
       value: h.value ?? null, units: h.units ?? null, price_series_id: h.priceKey ? (seriesId[h.priceKey] ?? null) : null,
       rate: h.rate ?? null, liq: h.liq ?? null, payout: !!h.payout, sip: h.sip ?? null,
       sip_source: h.sipSource === "payroll" ? "payroll" : "cash", paid_by: h.paidBy ? (personId[h.paidBy] ?? null) : null,
       include_in_nw: h.includeInNW !== false, estimate: !!h.estimate, private: false, notes: h.notes ?? "",
-    }).select("id").single();
+    });
     if (error) throw new Error(`${h.name}: ${error.message}`);
-    holdingId[key] = data.id;
-    const { error: oe } = await c.from("holding_owners").insert(owners.map((pid: string) => ({ holding_id: data.id, person_id: pid, share: 1 })));
+    holdingId[key] = hid;
+    const { error: oe } = await c.from("holding_owners").insert(owners.map((pid: string) => ({ holding_id: hid, person_id: pid, share: 1 })));
     if (oe) throw new Error(`${h.name}: ${oe.message}`);
     for (const pt of h.history ?? []) {
       const v = pt.v ?? null;
       const u = pt.u ?? null;
-      if (v != null || u != null) await recordSnapshot(data.id, pt.d, v, u);
+      if (v != null || u != null) await recordSnapshot(hid, pt.d, v, u);
     }
     // record_snapshot clears the estimate flag; put it back if the export had it.
-    if (h.estimate) await c.from("holdings").update({ estimate: true }).eq("id", data.id);
+    if (h.estimate) await c.from("holdings").update({ estimate: true }).eq("id", hid);
   }
 
   progress("Adding goals…");

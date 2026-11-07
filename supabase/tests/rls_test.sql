@@ -75,6 +75,24 @@ select pg_temp.check((select value from holdings where name = 'Mother FD') = 400
 select pg_temp.check((select count(*) from holdings where name = 'Mother FD') = 1, 'but still sees it as a family member');
 reset role;
 
+
+-- The app's own write pattern: client-generated ids, no RETURNING (see src/data/api.ts newId).
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into people (id, manager_id, name) values ('10000000-0000-0000-0000-000000000001', auth.uid(), 'Father');
+insert into price_series (id, label, unit, price) values ('10000000-0000-0000-0000-000000000002', 'Euro', 'EUR', 106);
+insert into holdings (id, name, cls, value) values ('10000000-0000-0000-0000-000000000003', 'Father SBI', 'cash', 285000);
+insert into holding_owners (holding_id, person_id) values ('10000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001');
+insert into goals (id, person_id, name, target, target_month) values ('10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'Wedding', 550000, '2028-01-01');
+insert into goal_links (goal_id, holding_id) values ('10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003');
+select pg_temp.check((select count(*) from holdings where name = 'Father SBI') = 1, 'app write pattern works for people, prices, holdings, owners, goals, links');
+-- Reading a new row back is what broke the first import; keep it documented.
+do $$ declare x uuid; begin
+  begin insert into holdings (name, cls) values ('Returning probe', 'cash') returning id into x;
+    raise notice 'note: INSERT ... RETURNING on holdings now works';
+  exception when insufficient_privilege then raise notice 'ok: INSERT ... RETURNING on holdings is rejected, so the app must not use it'; end;
+end $$;
+reset role;
+
 -- Anonymous visitors see nothing.
 set role anon; reset request.jwt.claim.sub;
 select pg_temp.check((select count(*) from holdings) = 0 and (select count(*) from people) = 0, 'anonymous sees nothing');
