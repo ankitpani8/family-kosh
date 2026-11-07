@@ -1,10 +1,10 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { BUCKET_LABEL, LT, RISK_LABEL, type Risk, type Settings as S } from "../../engine";
 import { saveSettings } from "../../data/api";
-import { guessMe, importKosh, parseExport, type KoshExport } from "../../data/importKosh";
 import { useData, useMutate } from "../../data/store";
 import { supabase } from "../../lib/supabase";
-import { Modal, useToast } from "../components/kit";
+import { useToast } from "../components/kit";
+import { ImportSheet } from "../ImportExport";
 
 export function Settings() {
   const { ledger, remote, session } = useData();
@@ -12,7 +12,7 @@ export function Settings() {
   const toast = useToast();
   const [cfg, setCfg] = useState<S | null>(ledger ? JSON.parse(JSON.stringify(ledger.settings)) : null);
   const [useSignals, setUseSignals] = useState(!!remote?.profile?.settings?.useSignals);
-  const [importing, setImporting] = useState<KoshExport | null>(null);
+  const [importing, setImporting] = useState(false);
   useEffect(() => { if (ledger && !cfg) setCfg(JSON.parse(JSON.stringify(ledger.settings))); }, [ledger, cfg]);
   if (!ledger || !remote || !cfg || !session) return null;
   const n = (v: string) => (v === "" ? 0 : Number(v));
@@ -21,13 +21,6 @@ export function Settings() {
     const err = await mutate(() => saveSettings(remote.userId, stored));
     toast(err ?? "Settings saved", !!err);
   };
-  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try { setImporting(parseExport(await file.text())); } catch (err) { toast(err instanceof Error ? err.message : "That file isn't a Family Kosh export.", true); }
-  };
-
   return (
     <div className="grid">
       <section className="panel span2">
@@ -81,11 +74,11 @@ export function Settings() {
       </section>
 
       <section className="panel span2">
-        <h2>Import from the Family Kosh artifact</h2>
-        <p className="muted small">Brings in people, holdings with their history, unit prices and goals from a Family Kosh export file. Run it once on a fresh account; running it twice adds everything twice.</p>
-        <label className="btn ghost" style={{ justifySelf: "start" }}>Choose export file<input type="file" accept="application/json,.json" hidden onChange={onFile} /></label>
+        <h2>Import</h2>
+        <p className="muted small">Bring in people, holdings with their history, unit prices and goals from a Family Kosh export: your old artifact file, or a copy someone shared from their People screen. Run each import once; running it twice adds everything twice.</p>
+        <button id="open-import" className="btn ghost" style={{ justifySelf: "start" }} onClick={() => setImporting(true)}>Import a file or text</button>
       </section>
-      {importing && <ImportSheet x={importing} onClose={() => setImporting(null)} />}
+      {importing && <ImportSheet onClose={() => setImporting(false)} />}
     </div>
   );
 }
@@ -127,41 +120,5 @@ function Install() {
       <p className="small"><b>iPhone (Safari):</b> Share → Add to Home Screen.</p>
       <p className="small"><b>Desktop (Chrome/Edge):</b> the install icon in the address bar.</p>
     </div>
-  );
-}
-
-function ImportSheet({ x, onClose }: { x: KoshExport; onClose: () => void }) {
-  const { remote, selfId, reload } = useData();
-  const toast = useToast();
-  const [me, setMe] = useState(guessMe(x) ?? "");
-  const [family, setFamily] = useState("Our family");
-  const [makeFamily, setMakeFamily] = useState(true);
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
-  if (!remote || !selfId) return null;
-  const run = async () => {
-    setBusy(true);
-    try {
-      const r = await importKosh(x, { userId: remote.userId, selfId, meKey: me, familyName: makeFamily ? family.trim() || "Our family" : null }, setMsg);
-      await reload();
-      toast(`Imported ${r.people} people, ${r.holdings} holdings and ${r.goals} goals`);
-      onClose();
-    } catch (e) {
-      setMsg(""); toast(e instanceof Error ? e.message : String(e), true);
-      await reload();
-    } finally { setBusy(false); }
-  };
-  return (
-    <Modal title="Import" onClose={() => !busy && onClose()}>
-      <p className="small">Found {Object.keys(x.members).length} people, {Object.keys(x.holdings).length} holdings, {Object.keys(x.prices).length} unit prices and {Object.keys(x.goals).length} goals.</p>
-      <label className="field">Which person is you?
-        <select value={me} onChange={(e) => setMe(e.target.value)}>{Object.entries(x.members).map(([k, m]) => <option key={k} value={k}>{m.name}</option>)}</select>
-      </label>
-      <p className="muted small">Everyone else becomes a person you manage. Anyone with their own login can take over their profile later with a hand-over code.</p>
-      <label className="check"><input type="checkbox" checked={makeFamily} onChange={(e) => setMakeFamily(e.target.checked)} /> Put everyone in a family</label>
-      {makeFamily && <label className="field">Family name<input value={family} onChange={(e) => setFamily(e.target.value)} /></label>}
-      {msg && <div className="note">{msg}</div>}
-      <div className="actions"><button className="btn ghost" onClick={onClose} disabled={busy}>Cancel</button><button className="btn" onClick={run} disabled={busy || !me}>{busy ? "Importing…" : "Import"}</button></div>
-    </Modal>
   );
 }

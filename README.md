@@ -81,6 +81,20 @@ npm run build        # production build into dist/
 npm run android:apk  # needs the Android SDK locally; CI does this for you
 ```
 
+## End-to-end test
+
+`e2e/server.mjs` stands in for Supabase's REST and auth APIs over a local Postgres running the real migration and RLS, so the real UI runs against the real privacy rules. `e2e/journey.cjs` drives three people through the app in separate browsers: an owner imports a family; a relative signs up, must see none of it, sets up his own family and imports a shared copy of the owner's partner; the partner takes over her own profile and joins both families. 26 checks cover visibility and edit rights at every step. Names and figures come from the export it's given; `e2e/fixtures/sample-export.json` is a made-up family.
+
+```bash
+createdb e2e && psql -d e2e -f supabase/tests/shim.sql -f supabase/migrations/0001_init.sql
+PGDATABASE=e2e node e2e/server.mjs &
+VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=test npx vite build --outDir /tmp/kosh-e2e
+npx vite preview --outDir /tmp/kosh-e2e --port 4174 &
+node e2e/journey.cjs http://127.0.0.1:4174/
+```
+
 ## Moving data in
 
-Settings → "Import from the Family Kosh artifact" takes the JSON export of the earlier claude.ai artifact. It adds the people you manage, holdings with their history, unit prices, goals and a family, all owned by your account. Run it once on a fresh account.
+Settings → Import takes a Family Kosh export: the JSON from the earlier claude.ai artifact, or a copy someone made with "Share a copy" on their People screen (as a file or pasted text). You choose whether one of the people is you and which family they join. Run each import once.
+
+**Sharing a person between families:** the live way is a hand-over. Whoever manages them taps "Hand over"; the person signs up and enters the code, then joins any other family with its invite code. They're then one profile, visible in every family they belong to. "Share a copy" is a snapshot for when that isn't possible.

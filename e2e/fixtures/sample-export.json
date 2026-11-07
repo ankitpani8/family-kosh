@@ -1,0 +1,279 @@
+{
+ "members": {
+  "me": {
+   "name": "Arjun",
+   "relation": "Me",
+   "color": "#3B5BDB",
+   "risk": "growth",
+   "income": 150000,
+   "expenses": 45000,
+   "order": 0,
+   "notes": ""
+  },
+  "partner": {
+   "name": "Meera",
+   "relation": "Partner",
+   "color": "#9D174D",
+   "risk": "balanced",
+   "income": 80000,
+   "expenses": null,
+   "order": 1,
+   "notes": ""
+  },
+  "mother": {
+   "name": "Lata",
+   "relation": "Mother",
+   "color": "#0F766E",
+   "risk": "conservative",
+   "income": 0,
+   "expenses": 0,
+   "order": 2,
+   "notes": ""
+  }
+ },
+ "prices": {
+  "gold": {
+   "label": "Gold 22K",
+   "unit": "gram",
+   "price": 13000,
+   "note": "sample",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "p": 13000
+    }
+   ]
+  }
+ },
+ "holdings": {
+  "a-bank": {
+   "name": "Salary account",
+   "cls": "cash",
+   "owners": [
+    "me"
+   ],
+   "mode": "value",
+   "value": 250000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": null,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Bank",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 250000
+    }
+   ]
+  },
+  "a-index": {
+   "name": "Index fund",
+   "cls": "equity_fund",
+   "owners": [
+    "me"
+   ],
+   "mode": "value",
+   "value": 180000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": 20000,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Broker",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 180000
+    }
+   ]
+  },
+  "a-epf": {
+   "name": "Provident fund",
+   "cls": "epf",
+   "owners": [
+    "me"
+   ],
+   "mode": "value",
+   "value": 600000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": 18000,
+   "sipSource": "payroll",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "EPFO",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 600000
+    }
+   ]
+  },
+  "m-fd": {
+   "name": "Mother's FD",
+   "cls": "fd",
+   "owners": [
+    "mother"
+   ],
+   "mode": "value",
+   "value": 500000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": null,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Post office",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 500000
+    }
+   ]
+  },
+  "m-gift": {
+   "name": "House fund deposit",
+   "cls": "fd",
+   "owners": [
+    "mother"
+   ],
+   "mode": "value",
+   "value": 0,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": 50000,
+   "sipSource": "cash",
+   "paidBy": "me",
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Post office",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 0
+    }
+   ]
+  },
+  "joint-gold": {
+   "name": "Family gold",
+   "cls": "gold",
+   "owners": [
+    "me",
+    "mother"
+   ],
+   "mode": "units",
+   "value": null,
+   "units": 40,
+   "priceKey": "gold",
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": null,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Locker",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "u": 40
+    }
+   ]
+  },
+  "p-fund": {
+   "name": "Flexi cap fund",
+   "cls": "equity_fund",
+   "owners": [
+    "partner"
+   ],
+   "mode": "value",
+   "value": 120000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": null,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": false,
+   "notes": "",
+   "place": "Broker",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 120000
+    }
+   ]
+  },
+  "p-bank": {
+   "name": "Partner savings",
+   "cls": "cash",
+   "owners": [
+    "partner"
+   ],
+   "mode": "value",
+   "value": 90000,
+   "units": null,
+   "priceKey": null,
+   "rate": null,
+   "liq": null,
+   "payout": false,
+   "sip": null,
+   "sipSource": "cash",
+   "paidBy": null,
+   "includeInNW": true,
+   "estimate": true,
+   "notes": "",
+   "place": "Bank",
+   "history": [
+    {
+     "d": "2026-10-30",
+     "v": 90000
+    }
+   ]
+  }
+ },
+ "goals": {
+  "g-house": {
+   "name": "House",
+   "owner": "me",
+   "target": 1200000,
+   "date": "2027-08",
+   "notes": "",
+   "linked": [
+    "m-gift"
+   ]
+  }
+ }
+}

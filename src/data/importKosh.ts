@@ -25,7 +25,15 @@ export function guessMe(x: KoshExport): string | null {
 
 export async function importKosh(
   x: KoshExport,
-  opts: { userId: string; selfId: string; meKey: string; familyName: string | null },
+  opts: {
+    userId: string;
+    selfId: string;
+    /** Which exported person is the signed-in account; "" adds everyone as people you manage. */
+    meKey: string;
+    /** Create a new family with this name, or add everyone to an existing family, or neither. */
+    familyName: string | null;
+    familyId?: string | null;
+  },
   progress: (msg: string) => void,
 ): Promise<{ people: number; holdings: number; goals: number }> {
   const c = sb();
@@ -34,11 +42,11 @@ export async function importKosh(
   progress("Adding people…");
   for (const [key, m] of Object.entries(x.members).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))) {
     const body = {
-      name: String(m.name ?? key), relation: key === opts.meKey ? "Me" : String(m.relation ?? ""), color: m.color ?? "#3B5BDB",
+      name: String(m.name ?? key), relation: opts.meKey && key === opts.meKey ? "Me" : String(m.relation ?? ""), color: m.color ?? "#3B5BDB",
       risk: ["conservative", "balanced", "growth"].includes(m.risk) ? m.risk : "balanced",
       income: Number(m.income) || 0, expenses: m.expenses == null ? null : Number(m.expenses), notes: String(m.notes ?? ""),
     };
-    personId[key] = await savePerson(opts.userId, body, key === opts.meKey ? opts.selfId : undefined);
+    personId[key] = await savePerson(opts.userId, body, opts.meKey && key === opts.meKey ? opts.selfId : undefined);
   }
 
   progress("Adding unit prices…");
@@ -89,11 +97,12 @@ export async function importKosh(
     goals++;
   }
 
-  if (opts.familyName) {
-    progress("Creating the family…");
-    const fid = await createFamily(opts.familyName);
+  const fid = opts.familyId ?? (opts.familyName ? (progress("Creating the family…"), await createFamily(opts.familyName)) : null);
+  if (fid) {
+    progress("Adding people to the family…");
     for (const [key, pid] of Object.entries(personId)) if (key !== opts.meKey) await addMember(fid, pid);
   }
-  if (x.config) await c.from("profiles").update({ settings: x.config }).eq("id", opts.userId);
+  // Settings only come along when the export is your own (you picked yourself in it).
+  if (x.config && opts.meKey) await c.from("profiles").update({ settings: x.config }).eq("id", opts.userId);
   return { people: Object.keys(personId).length, holdings: Object.keys(holdingId).length, goals };
 }

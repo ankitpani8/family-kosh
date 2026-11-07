@@ -5,6 +5,7 @@ import { useData, useMutate } from "../../data/store";
 import { inr, short } from "../../lib/format";
 import { CopyCode, DeleteButton, Dot, Empty, Modal, useToast } from "../components/kit";
 import { useSheet } from "../sheets";
+import { ExportSheet } from "../ImportExport";
 
 export function People() {
   const { ledger, remote, selfId } = useData();
@@ -14,6 +15,7 @@ export function People() {
   const [claim, setClaim] = useState<{ name: string; code: string } | null>(null);
   const [invite, setInvite] = useState<{ name: string; code: string } | null>(null);
   const [newFamily, setNewFamily] = useState(false);
+  const [sharing, setSharing] = useState<string | null>(null);
   if (!ledger || !remote) return null;
   const me = remote.people.find((p) => p.user_id === remote.userId);
   const adminOf = new Set(remote.members.filter((m) => m.person_id === me?.id && m.role === "admin").map((m) => m.family_id));
@@ -51,6 +53,7 @@ export function People() {
                     <td className="r" style={{ whiteSpace: "nowrap" }}>
                       {editable && <button className="btn sm ghost" onClick={() => open({ kind: "person", person: p })}>Edit</button>}
                       {p.managedByMe && <> <button className="btn sm ghost" onClick={() => makeClaim(p.id, p.name)}>Hand over</button></>}
+                      {editable && <> <button className="btn sm ghost" onClick={() => setSharing(p.id)}>Share a copy</button></>}
                     </td>
                   </tr>
                 );
@@ -59,7 +62,7 @@ export function People() {
           </table>
         </div>
         <p className="muted small">
-          Everyone has their own login and owns their own money. People without a phone or login (like parents) can be managed by you. "Hand over" gives a one-time code that lets them, or a partner with their own login, take over that profile with all its holdings and goals.
+          Everyone has their own login and owns their own money. People without a login (like parents) can be managed by you. "Hand over" gives a one-time code that moves that profile, with its holdings and goals, to their own login; they can then join other families too. "Share a copy" exports a snapshot someone else can import.
         </p>
       </section>
 
@@ -120,11 +123,12 @@ export function People() {
         </Modal>
       )}
       {newFamily && <NewFamily onClose={() => setNewFamily(false)} />}
+      {sharing && <ExportSheet personIds={[sharing]} onClose={() => setSharing(null)} />}
     </div>
   );
 }
 
-function NewFamily({ onClose }: { onClose: () => void }) {
+export function NewFamily({ onClose }: { onClose: () => void }) {
   const { ledger } = useData();
   const mutate = useMutate();
   const toast = useToast();
@@ -157,7 +161,7 @@ function NewFamily({ onClose }: { onClose: () => void }) {
   );
 }
 
-function JoinBox() {
+export function JoinBox() {
   const mutate = useMutate();
   const toast = useToast();
   const [code, setCode] = useState("");

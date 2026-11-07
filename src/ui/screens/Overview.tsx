@@ -5,6 +5,7 @@ import { MONTHS, fmtMonth, inr, pct, short } from "../../lib/format";
 import { Plot } from "../components/Plot";
 import { Dot, Empty, bcolor } from "../components/kit";
 import { useSheet } from "../sheets";
+import { GetStarted } from "../GetStarted";
 
 const LIQ_ORDER: Liquidity[] = ["instant", "week", "locked", "illiquid"];
 const LIQ_OPACITY = [0.9, 0.6, 0.38, 0.2];
@@ -15,8 +16,17 @@ export function Overview({ go }: { go: (tab: string) => void }) {
   const S: Scope = new Set(scope.people);
   const a = aggregate(ledger, S);
   const targets = targetWeights(ledger, S);
+  // A brand-new ledger shows only the set-up guide; empty charts would just be noise.
+  if (a.count === 0 && a.missing.length === 0)
+    return (
+      <div className="grid">
+        <GetStarted go={go} />
+        <EmptyStart />
+      </div>
+    );
   return (
     <div className="grid">
+      <GetStarted go={go} />
       <section className="panel span2">
         <div className="panel-h"><h2>Net worth over time</h2><span className="muted small">{scope.label} · {inr(a.nw)}</span></div>
         <Trend ledger={ledger} scope={S} />
@@ -169,5 +179,17 @@ function Attention({ ledger, scope }: { ledger: Ledger; scope: Scope }) {
       ))}
       {items.length > 15 && <p className="muted small">and {items.length - 15} more</p>}
     </div>
+  );
+}
+
+function EmptyStart() {
+  const open = useSheet();
+  return (
+    <section className="panel span2">
+      <Empty>
+        <p>Charts, next month's plan and projections appear here once there's something to count.</p>
+        <p style={{ marginTop: 10 }}><button className="btn" onClick={() => open({ kind: "holding" })}>Add your first holding</button></p>
+      </Empty>
+    </section>
   );
 }
