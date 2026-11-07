@@ -69,7 +69,7 @@ async function heroValue(page) { return (await page.locator(".hero .big").innerT
   await owner.page.setInputFiles('.sheet input[type=file]', EXPORT);
   await owner.page.locator("#import-me").waitFor();
   check((await owner.page.locator("#import-me").inputValue()) !== "", "owner: import recognises which person is him");
-  await owner.page.fill("#import-family-name", "Owner family");
+  await owner.page.fill("#import-family-name", "Owner fam");
   await owner.page.click("#import-run");
   const t1 = await toast(owner.page, /Imported/);
   check(t1.includes(`Imported ${counts.people} people, ${counts.holdings} holdings and ${counts.goals} goals`), `owner: import completes (${t1})`);
@@ -79,8 +79,15 @@ async function heroValue(page) { return (await page.locator(".hero .big").innerT
   check(ownerHero !== "₹0", `owner: family net worth is shown (${ownerHero})`);
   await shot(owner.page, "1-owner-overview.png");
 
-  // Share a copy of the partner, and create her hand-over code.
+  // Rename the family (everyone later must see the new name).
   await go(owner.page, "people");
+  await owner.page.getByRole("button", { name: "Rename" }).click();
+  await owner.page.fill("#rename-family", "Owner family");
+  await owner.page.locator(".sheet").getByRole("button", { name: "Save" }).click();
+  await toast(owner.page, /Family renamed/);
+  check(/Owner family/.test(await mainText(owner.page)) && !/Owner fam\b/.test(await mainText(owner.page)), "owner: renames the family");
+
+  // Share a copy of the partner, and create her hand-over code.
   const partnerRow = owner.page.locator("tr", { hasText: partnerName });
   await partnerRow.getByRole("button", { name: "Share a copy" }).click();
   const [dl] = await Promise.all([owner.page.waitForEvent("download"), owner.page.getByRole("button", { name: "Save or send file" }).click()]);

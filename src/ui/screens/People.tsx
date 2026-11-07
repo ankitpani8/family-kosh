@@ -16,6 +16,7 @@ export function People() {
   const [invite, setInvite] = useState<{ name: string; code: string } | null>(null);
   const [newFamily, setNewFamily] = useState(false);
   const [sharing, setSharing] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   if (!ledger || !remote) return null;
   const me = remote.people.find((p) => p.user_id === remote.userId);
   const adminOf = new Set(remote.members.filter((m) => m.person_id === me?.id && m.role === "admin").map((m) => m.family_id));
@@ -77,6 +78,7 @@ export function People() {
               <div className="panel-h">
                 <h3>{f.name}</h3>
                 <div className="row">
+                  {isAdmin && <button className="btn sm ghost" onClick={() => setRenaming({ id: f.id, name: f.name })}>Rename</button>}
                   {isAdmin && <button className="btn sm ghost" onClick={() => makeInvite(f.id, f.name)}>Invite someone</button>}
                   {me && members.some((m) => m.person_id === me.id) && !isAdmin && <button className="btn sm ghost" onClick={() => act(() => api.removeMember(f.id, me.id), "You left " + f.name)}>Leave</button>}
                 </div>
@@ -124,7 +126,30 @@ export function People() {
       )}
       {newFamily && <NewFamily onClose={() => setNewFamily(false)} />}
       {sharing && <ExportSheet personIds={[sharing]} onClose={() => setSharing(null)} />}
+      {renaming && <RenameFamily family={renaming} onClose={() => setRenaming(null)} />}
     </div>
+  );
+}
+
+function RenameFamily({ family, onClose }: { family: { id: string; name: string }; onClose: () => void }) {
+  const mutate = useMutate();
+  const toast = useToast();
+  const [name, setName] = useState(family.name);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast("Name the family.", true);
+    const err = await mutate(() => api.renameFamily(family.id, name.trim()));
+    if (err) toast(err, true);
+    else { toast("Family renamed"); onClose(); }
+  };
+  return (
+    <Modal title="Rename family" onClose={onClose}>
+      <form onSubmit={submit}>
+        <label className="field">Family name<input id="rename-family" value={name} onChange={(e) => setName(e.target.value)} /></label>
+        <p className="muted small">Everyone in the family sees the new name.</p>
+        <div className="actions"><button type="button" className="btn ghost" onClick={onClose}>Cancel</button><button className="btn">Save</button></div>
+      </form>
+    </Modal>
   );
 }
 
